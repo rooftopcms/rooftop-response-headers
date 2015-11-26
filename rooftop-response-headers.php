@@ -21,9 +21,9 @@ class Rooftop_Response_Headers {
             'cache_max_age_seconds' => 0
         );
 
-        $this->options = apply_filters( 'rooftop_header_options', $default_options );
+        add_action( 'rest_post_dispatch', function( $response, $handler, $request) use($default_options) {
+            $this->options = apply_filters( 'rooftop_response_header_options', $default_options );
 
-        add_action( 'rest_post_dispatch', function( $response, $handler, $request ) {
             if($response->status != 200) return $response;
 
             $this->post_data = $response->data;
@@ -117,9 +117,13 @@ class Rooftop_Response_Headers {
 
             array_map(function($data) use(&$hash_date, &$hash_guid, &$hash_id, &$hash_mtime) {
                 array_push($hash_date, $data['date']);
-                array_push($hash_guid, $data['guid']);
                 array_push($hash_id, $data['id']);
-                array_push($hash_mtime, strtotime($data['modified_gmt']));
+
+                $modified = $this->get_modified_value_for_data($data);
+                array_push($hash_mtime, strtotime($modified));
+
+                $guid = array_key_exists('guid', $data) ? $data['guid'] : implode('-', [$data['id'], $data['type'], $data['status']]);
+                array_push($hash_guid, $guid);
             }, $this->post_data);
 
             $hash_date = serialize($hash_date);
@@ -181,6 +185,19 @@ class Rooftop_Response_Headers {
         $last_modified_value = str_replace( '+0000', 'GMT', gmdate('r', $this->mtime) );
 
         return $last_modified_value;
+    }
+
+    private function get_modified_value_for_data($data) {
+        if( array_key_exists('modified_gmt', $data) ) {
+            $modified = strtotime($data['modified_gmt']);
+        }elseif( array_key_exists('posst', $data) ) {
+            $post = get_post($data['post']);
+            $modified = strtotime($post->post_modified_gmt);
+        }else {
+            $modified = mktime();
+        }
+
+        return $modified;
     }
 }
 new Rooftop_Response_Headers();
