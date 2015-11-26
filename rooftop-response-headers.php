@@ -197,14 +197,21 @@ class Rooftop_Response_Headers {
         return $last_modified_value;
     }
 
+    /**
+     * If the post data doesn't have a modified_gmt (ie it is content that belongs to something else
+     * that we generate a cache/ETag for) get the associated post and use its modified_gmt value
+     *
+     * @param $data
+     * @return int
+     */
     private function get_modified_value_for_data($data) {
         if( array_key_exists('modified_gmt', $data) ) {
             $modified = strtotime($data['modified_gmt']);
-        }elseif( array_key_exists('posst', $data) ) {
+        }elseif( array_key_exists('post', $data) ) {
             $post = get_post($data['post']);
             $modified = strtotime($post->post_modified_gmt);
         }else {
-            $modified = mktime();
+            $modified = time();
         }
 
         return $modified;
