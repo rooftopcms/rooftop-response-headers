@@ -104,6 +104,11 @@ class Rooftop_Response_Headers {
     function generate_etag() {
         global $wp;
 
+        /**
+         * if the post data has an 'id' key, then it is a single resource (rather than a collection).
+         * generate the hash values for this single post, else we collect the same attributes from the
+         * array of post data and stringify them. this ensures we're creating the same ETag for a collection of posts
+         */
         if(array_key_exists('id', $this->post_data)) {
             $hash_date = $this->post_data['date'];
             $hash_guid = serialize($this->post_data['guid']);
@@ -181,8 +186,9 @@ class Rooftop_Response_Headers {
      * @param $options
      * @return mixed
      */
-    function generate_last_modified( ) {
-        $last_modified_value = str_replace( '+0000', 'GMT', gmdate('r', $this->mtime) );
+    function generate_last_modified() {
+        $mtime = strtotime($this->post_data['modified_gmt']);
+        $last_modified_value = str_replace( '+0000', 'GMT', gmdate('r', $mtime) );
 
         return $last_modified_value;
     }
