@@ -13,6 +13,10 @@ class Rooftop_Response_Headers {
     private $options, $post_data;
 
     function __construct() {
+        /*
+         * the default options can (and should) be altered by implementing the
+         * rooftop_response_header_options filter in your rooftop theme functions.php
+         */
         $default_options = array(
             'add_etag_header' => true,
             'add_last_modified_header' => true,
@@ -43,8 +47,8 @@ class Rooftop_Response_Headers {
     /**
      * Add headers for a single post object
      *
-     * @param $options
-     * @param $post_data
+     * @internal param $options
+     * @internal param $post_data
      */
     function rooftop_set_headers_for_entity() {
         $this->generate_headers();
@@ -53,8 +57,8 @@ class Rooftop_Response_Headers {
     /**
      * Add headers for a collection of posts
      *
-     * @param $options
-     * @param $post_data
+     * @internal param $options
+     * @internal param $post_data
      */
     function rooftop_set_headers_for_collection() {
         $this->generate_headers();
@@ -96,9 +100,9 @@ class Rooftop_Response_Headers {
     /**
      * Generate an ETag header
      *
-     * @param $post_data
-     * @param $mtime
-     * @param $options
+     * @internal param $post_data
+     * @internal param $mtime
+     * @internal param $options
      * @return String
      */
     function generate_etag() {
@@ -150,9 +154,9 @@ class Rooftop_Response_Headers {
     /**
      * Generate a Cache-Control header
      *
-     * @param $post_data
-     * @param $mtime
-     * @param $options
+     * @internal param $post_data
+     * @internal param $mtime
+     * @internal param $options
      * @return String
      */
     function generate_cache_control( ) {
@@ -165,9 +169,9 @@ class Rooftop_Response_Headers {
     /**
      * Generate a Last-Modified header
      *
-     * @param $post_data
-     * @param $mtime
-     * @param $options
+     * @internal param $post_data
+     * @internal param $mtime
+     * @internal param $options
      * @return String
      */
     function generate_pragma_header() {
@@ -181,9 +185,9 @@ class Rooftop_Response_Headers {
     /**
      * Generate a Last-Modified header
      *
-     * @param $post_data
-     * @param $mtime
-     * @param $options
+     * @internal param $post_data
+     * @internal param $mtime
+     * @internal param $options
      * @return mixed
      */
     function generate_last_modified() {
