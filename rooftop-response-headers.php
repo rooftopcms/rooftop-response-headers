@@ -118,30 +118,47 @@ class Rooftop_Response_Headers {
             $hash_guid = serialize($this->post_data['guid']);
             $hash_id   = $this->post_data['id'];
             $hash_mtime= strtotime($this->post_data['modified_gmt']);
-        }else {
+
+            $hashify = array( $hash_mtime, $hash_date, $hash_guid, $hash_id, serialize( $wp->query_vars ) );
+        }elseif( is_array( array_values( $this->post_data)[0] ) ) {
             $hash_date = [];
             $hash_guid = [];
             $hash_id   = [];
             $hash_mtime = [];
 
             array_map(function($data) use(&$hash_date, &$hash_guid, &$hash_id, &$hash_mtime) {
-                array_push($hash_date, $data['date']);
-                array_push($hash_id, $data['id']);
+                if( array_key_exists('taxonomy', $data) ) {
+                    array_push($hash_id, $data['ID']);
+                    $item_ids_and_titles = array_map(function($m) {
+                        return $m['ID'].'/'.$m['title'];
+                    }, $data['items']);
+                    array_push($hash_guid, $data['taxonomy'].'/'.$data['term_taxonomy_id'].':'.implode(',', $item_ids_and_titles));
+                }else {
+                    array_push($hash_date, $data['date']);
+                    array_push($hash_id, $data['id']);
 
-                $modified = $this->get_modified_value_for_data($data);
-                array_push($hash_mtime, strtotime($modified));
+                    $modified = $this->get_modified_value_for_data($data);
+                    array_push($hash_mtime, strtotime($modified));
 
-                $guid = array_key_exists('guid', $data) ? $data['guid'] : implode('-', [$data['id'], $data['type'], $data['status']]);
-                array_push($hash_guid, $guid);
+                    $guid = array_key_exists('guid', $data) ? $data['guid'] : implode('-', [$data['id'], $data['type'], $data['status']]);
+                    array_push($hash_guid, $guid);
+                }
             }, $this->post_data);
 
             $hash_date = serialize($hash_date);
             $hash_guid = serialize($hash_guid);
             $hash_id   = serialize($hash_id);
             $hash_mtime= serialize($hash_mtime);
+
+            $hashify = array( $hash_mtime, $hash_date, $hash_guid, $hash_id, serialize( $wp->query_vars ) );
+        }else {
+            if( array_key_exists( 'routes', $this->post_data ) ) {
+                $hashify = array_keys ( $this->post_data['routes'] );
+            }else {
+                $hashify = array_keys ( $this->post_data );
+            }
         }
 
-        $hashify = array( $hash_mtime, $hash_date, $hash_guid, $hash_id, serialize( $wp->query_vars ) );
         $etag = sha1( serialize( $hashify ) );
 
         if( $this->options['generate_weak_etag'] ) {
