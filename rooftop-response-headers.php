@@ -133,7 +133,7 @@ class Rooftop_Response_Headers {
                         return $m['ID'].'/'.$m['title'];
                     }, $data['items']);
                     array_push($hash_guid, $data['taxonomy'].'/'.$data['term_taxonomy_id'].':'.implode(',', $item_ids_and_titles));
-                }elseif( array_key_exists( 'data', $data ) ) { // post, page, custom type
+                }elseif( array_key_exists( 'date', $data ) ) { // post, page, custom type
                     array_push($hash_date, $data['date']);
                     array_push($hash_id, $data['id']);
 
@@ -144,7 +144,11 @@ class Rooftop_Response_Headers {
                     array_push($hash_guid, $guid);
                 }else {
                     array_push($hash_id, $data['ID']);
-                    array_push($hash_guid, $data['meta']);
+                    if( array_key_exists( 'meta', $data ) ) {
+                        array_push($hash_guid, $data['meta']);
+                    }else {
+                        array_push($hash_guid, array_values($data));
+                    }
                 }
             }, $this->post_data);
 
