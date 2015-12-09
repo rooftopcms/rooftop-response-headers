@@ -120,20 +120,20 @@ class Rooftop_Response_Headers {
             $hash_mtime= strtotime($this->post_data['modified_gmt']);
 
             $hashify = array( $hash_mtime, $hash_date, $hash_guid, $hash_id, serialize( $wp->query_vars ) );
-        }elseif( is_array( array_values( $this->post_data)[0] ) ) {
+        }elseif( is_array( $this->post_data ) ) {
             $hash_date = [];
             $hash_guid = [];
             $hash_id   = [];
             $hash_mtime = [];
 
             array_map(function($data) use(&$hash_date, &$hash_guid, &$hash_id, &$hash_mtime) {
-                if( array_key_exists('taxonomy', $data) ) {
+                if( array_key_exists('taxonomy', $data) ) { // taxonomy or menu item
                     array_push($hash_id, $data['ID']);
                     $item_ids_and_titles = array_map(function($m) {
                         return $m['ID'].'/'.$m['title'];
                     }, $data['items']);
                     array_push($hash_guid, $data['taxonomy'].'/'.$data['term_taxonomy_id'].':'.implode(',', $item_ids_and_titles));
-                }else {
+                }elseif( array_key_exists( 'data', $data ) ) { // post, page, custom type
                     array_push($hash_date, $data['date']);
                     array_push($hash_id, $data['id']);
 
@@ -142,6 +142,9 @@ class Rooftop_Response_Headers {
 
                     $guid = array_key_exists('guid', $data) ? $data['guid'] : implode('-', [$data['id'], $data['type'], $data['status']]);
                     array_push($hash_guid, $guid);
+                }else {
+                    array_push($hash_id, $data['ID']);
+                    array_push($hash_guid, $data['meta']);
                 }
             }, $this->post_data);
 
