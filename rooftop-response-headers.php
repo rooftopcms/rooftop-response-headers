@@ -108,71 +108,117 @@ class Rooftop_Response_Headers {
     function generate_etag() {
         global $wp;
 
-        /**
-         * if the post data has an 'id' key, then it is a single resource (rather than a collection).
-         * generate the hash values for this single post, else we collect the same attributes from the
-         * array of post data and stringify them. this ensures we're creating the same ETag for a collection of posts
-         */
-        if(array_key_exists('id', $this->post_data)) {
-            $hash_date = $this->post_data['date'];
-            $hash_guid = serialize($this->post_data['guid']);
-            $hash_id   = $this->post_data['id'];
-            $hash_mtime= strtotime($this->post_data['modified_gmt']);
-
-            $hashify = array( $hash_mtime, $hash_date, $hash_guid, $hash_id, serialize( $wp->query_vars ) );
-        }elseif( is_array( $this->post_data ) ) {
-            $hash_date = [];
-            $hash_guid = [];
-            $hash_id   = [];
-            $hash_mtime = [];
-
-            array_map(function($data) use(&$hash_date, &$hash_guid, &$hash_id, &$hash_mtime) {
-                if( array_key_exists('taxonomy', $data) ) { // taxonomy or menu item
-                    array_push($hash_id, $data['ID']);
-                    $item_ids_and_titles = array_map(function($m) {
-                        return $m['ID'].'/'.$m['title'];
-                    }, $data['items']);
-                    array_push($hash_guid, $data['taxonomy'].'/'.$data['term_taxonomy_id'].':'.implode(',', $item_ids_and_titles));
-                }elseif( array_key_exists( 'date', $data ) ) { // post, page, custom type
-                    array_push($hash_date, $data['date']);
-                    array_push($hash_id, $data['id']);
-
-                    $modified = $this->get_modified_value_for_data($data);
-                    array_push($hash_mtime, strtotime($modified));
-
-                    $guid = array_key_exists('guid', $data) ? $data['guid'] : implode('-', [$data['id'], $data['type'], $data['status']]);
-                    array_push($hash_guid, $guid);
-                }else {
-                    array_push($hash_id, $data['ID']);
-                    if( array_key_exists( 'meta', $data ) ) {
-                        array_push($hash_guid, $data['meta']);
-                    }else {
-                        array_push($hash_guid, array_values($data));
-                    }
-                }
-            }, $this->post_data);
-
-            $hash_date = serialize($hash_date);
-            $hash_guid = serialize($hash_guid);
-            $hash_id   = serialize($hash_id);
-            $hash_mtime= serialize($hash_mtime);
-
-            $hashify = array( $hash_mtime, $hash_date, $hash_guid, $hash_id, serialize( $wp->query_vars ) );
-        }else {
-            if( array_key_exists( 'routes', $this->post_data ) ) {
-                $hashify = array_keys ( $this->post_data['routes'] );
+        if( $this->is_collection( $this->post_data ) ) {
+            if( $this->is_resourceful( array_values( $this->post_data )[0] ) ){
+                $hashify = $this->values_for_resource_collection($this->post_data);
             }else {
-                $hashify = array_keys ( $this->post_data );
+                $hashify = $this->values_for_collection($this->post_data);
             }
+        }elseif( $this->is_resourceful( $this->post_data ) ) {
+            $hashify = $this->values_for_resource($this->post_data);
+        }else {
+            $hashify = $this->values_for_response($this->post_data);
         }
 
-        $etag = sha1( serialize( $hashify ) );
+        $last_uri_segment = array_reverse(array_values(preg_split('/\//', $_SERVER['REQUEST_URI'])))[0];
+        $etag = sha1( $last_uri_segment . '=' . serialize( $hashify ) );
 
         if( $this->options['generate_weak_etag'] ) {
             return sprintf( 'W/"%s"', $etag );
         }else {
             return sprintf( '"%s"', $etag );
         }
+    }
+
+    function values_for_resource($data) {
+        $values = array();
+        $values[] = $data['id'];
+        $values[] = $data['date'];
+        $values[] = serialize($data['guid']);
+        $values[] = strtotime($data['modified_gmt']);
+
+        return array_values($values);
+    }
+    function values_for_resource_collection($data) {
+        $values = [];
+
+        foreach($data as $resource_data) {
+            $values[] = $this->values_for_resource($resource_data);
+        }
+        return array_values($values);
+    }
+    function values_for_response($data) {
+        $values = array();
+
+        if( array_key_exists( 'routes', $data ) ) {
+            $values = array_keys($data['routes']);
+        }elseif( array_key_exists( 'taxonomy', $data ) ) {
+            $f = 1;
+        }elseif( array_key_exists( 'items', $data ) ) { // wp-api request
+            $values = array_map(function($i){
+                return $i['ID'].':'.$i['title'];
+            }, $data['items']);
+        }else {
+            if( is_array( $data ) ) {
+                $values = array_values( $data );
+            }else {
+                $values = [$data];
+            }
+        }
+
+        return $values;
+    }
+    function values_for_collection($data) {
+        $values = [];
+
+        foreach($data as $resource_data) {
+            $values[] = $this->values_for_response($resource_data);
+        }
+        return array_values($values);
+    }
+
+    function get_request_id( $data ) {
+        if( array_key_exists( 'ID', $data ) ) {
+            return $data['ID'];
+        }elseif( array_key_exists( 'id', $data ) ) {
+            return $data['id'];
+        }
+
+        return null;
+    }
+
+    function is_collection( $data ) {
+        $is_collection = false;
+
+        if( count( $data ) ) {
+            $first = array_values( $data )[0];
+            if( is_array( $first ) ) {
+                $first_attribute = array_values(array_keys(array_values($data)[0]))[0];
+            }else {
+                return false;
+            }
+
+            $all_have_attribute = array_unique(array_map(function($i) use ($first_attribute) {
+                if( is_array( $i ) ) {
+                    return array_key_exists($first_attribute, $i);
+                }else {
+                    return false;
+                }
+            }, $data));
+
+            if( count( $all_have_attribute ) === 1 && array_values( $all_have_attribute )[0]=== true ) {
+                $is_collection = true;
+            }
+        }
+
+        return $is_collection;
+    }
+
+    function is_resourceful( $data ) {
+        if( ( array_key_exists( 'id', $data ) || array_key_exists( 'ID', $data ) ) && array_key_exists( 'date', $data ) ) {
+            return true;
+        }
+        return false;
     }
 
     /**
