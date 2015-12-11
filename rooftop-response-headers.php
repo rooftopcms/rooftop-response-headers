@@ -12,7 +12,12 @@ Text Domain: rooftop-response-headers
 class Rooftop_Response_Headers {
     private $options, $post_data;
 
+    private $redis, $redis_key_prefix;
+
     function __construct() {
+        $this->redis = new Predis\Client();
+        $this->redis_key_prefix = 'site_id:'.get_current_blog_id().':etags:';
+
         /*
          * the default options can (and should) be altered by implementing the
          * rooftop_response_header_options filter in your rooftop theme functions.php
@@ -24,6 +29,34 @@ class Rooftop_Response_Headers {
             'generate_weak_etag' => false,
             'cache_max_age_seconds' => 0
         );
+
+        add_action( 'save_post', function($post_id) {
+            $post = get_post($post_id);
+            $key = $this->redis_key_prefix . $post->post_type . 's/' . $post->ID;
+
+            $this->redis->del($key);
+        }, 20, 1);
+
+        add_action( 'init', function($query) {
+            $match_etag = array_key_exists('HTTP_IF_NONE_MATCH', $_SERVER) ? $_SERVER['HTTP_IF_NONE_MATCH'] : null;
+
+            if( preg_match('/([^\/]+)\/\d+$/', $_SERVER['REQUEST_URI']) && $match_etag ) {
+                list($post_id, $post_type) = array_reverse(preg_split('/\//', $_SERVER['REQUEST_URI']));
+
+                $key = $this->redis_key_prefix . $post_type . '/' . $post_id;
+                $matched = $this->redis->get($key);
+
+                /**
+                 * if we've been given an ETag to match against, and the post lookup
+                 * has a matching etag, we can return an empty response and a 304 http status
+                 */
+                if( $matched && $matched == $match_etag ) {
+                    echo "[]";
+                    status_header(304);
+                    exit;
+                }
+            }
+        }, 1);
 
         add_action( 'rest_post_dispatch', function( $response, $handler, $request) use($default_options) {
             $this->options = apply_filters( 'rooftop_response_header_options', $default_options );
@@ -61,6 +94,10 @@ class Rooftop_Response_Headers {
      * @internal param $post_data
      */
     function rooftop_set_headers_for_collection() {
+        if( count($this->post_data) !== 1 ) {
+            $this->options['add_etag_header'] = true;
+        }
+
         $this->generate_headers();
     }
 
@@ -72,7 +109,20 @@ class Rooftop_Response_Headers {
         $headers = [];
 
         if( $this->options['add_etag_header'] === true ) {
-            $headers['ETag'] = $this->generate_etag();
+            $post = (is_array($this->post_data) && !array_key_exists('id', $this->post_data)) ? array_values($this->post_data)[0] : $this->post_data;
+            $post_type = $post['type'];
+            $post_id   = $post['id'];
+
+            $etag = $this->generate_etag();
+
+            if( $this->options['generate_weak_etag'] ) {
+                $headers['ETag'] = sprintf( 'W/"%s"', $etag );
+            }else {
+                $headers['ETag'] = sprintf( '"%s"', $etag );
+            }
+
+            $key = $this->redis_key_prefix . $post_type . 's/' . $post_id;
+            $this->redis->set($key, $etag);
         }
 
         if( $this->options['add_cache_control_header'] === true ) {
@@ -123,11 +173,7 @@ class Rooftop_Response_Headers {
         $last_uri_segment = array_reverse(array_values(preg_split('/\//', $_SERVER['REQUEST_URI'])))[0];
         $etag = sha1( $last_uri_segment . '=' . serialize( $hashify ) );
 
-        if( $this->options['generate_weak_etag'] ) {
-            return sprintf( 'W/"%s"', $etag );
-        }else {
-            return sprintf( '"%s"', $etag );
-        }
+        return $etag;
     }
 
     function values_for_resource($data) {

@@ -16,5 +16,6 @@
     ],
     "type": "wordpress-muplugin",
     "require": {
+      "predis/predis": "~1.0.3"
     }
 }
