@@ -95,7 +95,9 @@ class Rooftop_Response_Headers {
      * @internal param $post_data
      */
     function rooftop_set_headers_for_entity() {
-        $this->generate_headers();
+        if( $this->is_collection($this->post_data) || $this->is_resourceful($this->post_data) ) {
+            $this->generate_headers();
+        }
     }
 
     /**
@@ -109,7 +111,9 @@ class Rooftop_Response_Headers {
             $this->options['add_etag_header'] = true;
         }
 
-        $this->generate_headers();
+        if( $this->is_collection($this->post_data) || $this->is_resourceful($this->post_data) ) {
+            $this->generate_headers();
+        }
     }
 
     /**
@@ -167,8 +171,6 @@ class Rooftop_Response_Headers {
      * @return String
      */
     function generate_etag() {
-        global $wp;
-
         if( $this->is_collection( $this->post_data ) ) {
             if( $this->is_resourceful( array_values( $this->post_data )[0] ) ){
                 $hashify = $this->values_for_resource_collection($this->post_data);
