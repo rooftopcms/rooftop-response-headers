@@ -37,7 +37,9 @@ class Rooftop_Response_Headers {
             $this->redis->del($key);
         }, 20, 1);
 
-        add_action( 'init', function($query) {
+        add_action( 'init', function($query) use ($default_options) {
+            $this->options = apply_filters( 'rooftop_response_header_options', $default_options );
+
             $match_etag = array_key_exists('HTTP_IF_NONE_MATCH', $_SERVER) ? $_SERVER['HTTP_IF_NONE_MATCH'] : null;
 
             if( preg_match('/([^\/]+)\/\d+$/', $_SERVER['REQUEST_URI']) && $match_etag ) {
@@ -53,6 +55,15 @@ class Rooftop_Response_Headers {
                 if( $matched && $matched == $match_etag ) {
                     echo "[]";
                     status_header(304);
+
+                    if( $this->options['generate_weak_etag'] ) {
+                        $etag = sprintf( 'W/"%s"', $matched );
+                    }else {
+                        $etag = sprintf( '"%s"', $matched );
+                    }
+
+                    header( 'ETag: ' . $etag );
+
                     exit;
                 }
             }
