@@ -125,8 +125,8 @@ class Rooftop_Response_Headers {
 
         if( $this->options['add_etag_header'] === true ) {
             $post = (is_array($this->post_data) && !array_key_exists('id', $this->post_data)) ? array_values($this->post_data)[0] : $this->post_data;
-            $post_type = $post['type'];
-            $post_id   = $post['id'];
+            $post_type = $this->getType($post);
+            $post_id   = $this->getId($post);
 
             $etag = $this->generate_etag();
 
@@ -160,6 +160,46 @@ class Rooftop_Response_Headers {
                 header( sprintf( '%s: %s', $header_name, $header_value) );
             }
         }
+    }
+
+    /**
+     * Returns the content/menu/taxonomy type/name of the given resource
+     *
+     * @param $data
+     * @return mixed
+     */
+    function getType($data) {
+        if(array_key_exists( 'type', $data) ) {
+            $type = $data['type'];
+        }elseif( array_key_exists( 'taxonomy', $data ) ){
+            $type = $data['taxonomy'];
+        }elseif( array_key_exists( 'name', $data ) ) {
+            $type = $data['name'];
+        }elseif( array_key_exists( 'term_id', $data ) ) {
+            $type = $data['term_id'];
+        }
+
+        return $type;
+    }
+
+    /**
+     * Returns the content/menu/taxonomy type/name of the given resource
+     *
+     * @param $data
+     * @return mixed
+     */
+    function getId($data) {
+        if(array_key_exists( 'id', $data) ) {
+            $id = $data['id'];
+        }elseif( array_key_exists( 'ID', $data ) ) {
+            $id = $data['ID'];
+        }elseif( array_key_exists( 'taxonomy_id', $data ) ) {
+            $id = $data['taxonomy_id'];
+        }elseif( array_key_exists( 'term_id', $data ) ) {
+            $id = $data['term_id'];
+        }
+
+        return $id;
     }
 
     /**
