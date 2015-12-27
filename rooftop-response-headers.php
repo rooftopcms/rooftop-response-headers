@@ -253,7 +253,8 @@ class Rooftop_Response_Headers {
             $values = array_keys($data['routes']);
         }elseif( array_key_exists( 'items', $data ) ) { // wp-api request
             $values = array_map(function($i){
-                return $i['ID'].':'.$i['title'];
+                $id = array_key_exists('ID', $i) ? $i['ID'] : $i['id'];
+                return $id.':'.$i['title'];
             }, $data['items']);
         }else {
             if( is_array( $data ) ) {
