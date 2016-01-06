@@ -17,8 +17,9 @@ class Rooftop_Response_Headers {
     function __construct() {
         $this->redis = new Predis\Client([
             'scheme' => 'tcp',
-                'host'   => REDIS_HOST,
-                'port'   => REDIS_PORT,
+            'host'   => REDIS_HOST,
+            'port'   => REDIS_PORT,
+            'password' => REDIS_PASSWORD
         ]);
         $this->redis_key_prefix = 'site_id:'.get_current_blog_id().':etags:';
 
