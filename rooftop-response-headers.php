@@ -182,6 +182,10 @@ class Rooftop_Response_Headers {
             $type = $data['name'];
         }elseif( array_key_exists( 'term_id', $data ) ) {
             $type = $data['term_id'];
+        }else {
+            // if all else failse, return the resource name
+            $path = preg_split( '/\//', $_SERVER['REQUEST_URI'] );
+            $type = end( $path );
         }
 
         return $type;
