@@ -89,6 +89,11 @@ class Rooftop_Response_Headers {
                 $this->rooftop_set_headers_for_collection();
             }
 
+            $page = $request['page'] ? (int)$request['page'] : 1;
+            $per_page = $request['per_page'] ? (int)$request['per_page'] : 10;
+            $response->header( 'X-WP-Page', $page );
+            $response->header( 'X-WP-Per-Page', $per_page );
+
             return $response;
         }, 99, 3);
     }
