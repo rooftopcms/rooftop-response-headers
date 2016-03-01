@@ -37,9 +37,11 @@ class Rooftop_Response_Headers {
 
         add_action( 'save_post', function($post_id) {
             $post = get_post($post_id);
-            $key = $this->redis_key_prefix . $post->post_type . 's/' . $post->ID;
 
-            $this->redis->del($key);
+            $id_key = $this->redis_key_prefix . $post->post_type . 's/' . $post_id;
+            $slug_key = $this->redis_key_prefix . $post->post_type . 's/' . $post->post_name;
+            $this->redis->del($id_key);
+            $this->redis->del($slug_key);
         }, 20, 1);
 
         add_action( 'init', function($query) use ($default_options) {
@@ -47,10 +49,25 @@ class Rooftop_Response_Headers {
 
             $match_etag = array_key_exists('HTTP_IF_NONE_MATCH', $_SERVER) ? $_SERVER['HTTP_IF_NONE_MATCH'] : null;
 
-            if( preg_match('/([^\/]+)\/\d+$/', $_SERVER['REQUEST_URI']) && $match_etag ) {
-                list($post_id, $post_type) = array_reverse(preg_split('/\//', $_SERVER['REQUEST_URI']));
+            // parse the query string into a $query_string_params array
+            parse_str( @parse_url($_SERVER['REQUEST_URI'])['query'], $query_string_params );
 
-                $key = $this->redis_key_prefix . $post_type . '/' . $post_id;
+            /*
+             * ensure the request is specific to a resource by checking that we're hitting /some-path/id (id = \d+) or
+             * that we're expecting 1 result in the response by passing the per_page parameter value 1
+             */
+            if( ( preg_match('/([^\/]+)\/\d+$/', $_SERVER['REQUEST_URI'] ) || @$query_string_params['per_page'] == 1 ) && $match_etag ) {
+                $request = parse_url( $_SERVER['REQUEST_URI'] );
+
+                if( array_key_exists( 'query', $request ) ) { // filter query with limit of 1
+                    $post_type = array_reverse( preg_split( '/\//', $request['path'] ) )[0];
+                    $post_slug = @$query_string_params['filter']['name'];
+                    $key = $this->redis_key_prefix . $post_type . '/' . $post_slug;
+                }else { // resource query, specifying the resource ID
+                    list($post_id, $post_type) = array_reverse( preg_split( '/\//', $request['path'] ) );
+                    $key = $this->redis_key_prefix . $post_type . '/' . $post_id;
+                }
+
                 $matched = $this->redis->get($key);
 
                 /**
@@ -146,8 +163,10 @@ class Rooftop_Response_Headers {
                 $headers['ETag'] = sprintf( '"%s"', $etag );
             }
 
-            $key = $this->redis_key_prefix . $post_type . 's/' . $post_id;
-            $this->redis->set($key, $etag);
+            $id_key = $this->redis_key_prefix . $post_type . 's/' . $post_id;
+            $slug_key = $this->redis_key_prefix . $post_type . 's/' . $post['slug'];
+            $this->redis->set($id_key, $etag);
+            $this->redis->set($slug_key, $etag);
         }
 
         if( $this->options['add_cache_control_header'] === true ) {
