@@ -222,6 +222,8 @@ class Rooftop_Response_Headers {
      * @return mixed
      */
     function getId($data) {
+        $id = http_build_query( (array)$data );
+
         if(array_key_exists( 'id', $data) ) {
             $id = $data['id'];
         }elseif( array_key_exists( 'ID', $data ) ) {
@@ -230,6 +232,8 @@ class Rooftop_Response_Headers {
             $id = $data['taxonomy_id'];
         }elseif( array_key_exists( 'term_id', $data ) ) {
             $id = $data['term_id'];
+        }elseif( array_key_exists( 'slug', $data ) ) {
+            $id = $data['slug'];
         }
 
         return $id;
