@@ -268,10 +268,10 @@ class Rooftop_Response_Headers {
 
     function values_for_resource($data) {
         $values = array();
-        $values[] = $data['id'];
-        $values[] = $data['date'];
-        $values[] = serialize($data['guid']);
-        $values[] = strtotime($data['modified_gmt']);
+        $values[] = @$data['id'];
+        $values[] = @$data['date'];
+        $values[] = serialize(@$data['guid']);
+        $values[] = strtotime(@$data['modified_gmt']);
 
         return array_values($values);
     }
@@ -284,8 +284,6 @@ class Rooftop_Response_Headers {
         return array_values($values);
     }
     function values_for_response($data) {
-        $values = array();
-
         if( array_key_exists( 'routes', $data ) ) {
             $values = array_keys($data['routes']);
         }elseif( array_key_exists( 'items', $data ) ) { // wp-api request
