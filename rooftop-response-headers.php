@@ -198,7 +198,7 @@ class Rooftop_Response_Headers {
      * @return mixed
      */
     function getType($data) {
-        if(array_key_exists( 'type', $data) ) {
+        if(array_key_exists( 'type', $data) && gettype($data['type'])=="string") {
             $type = $data['type'];
         }elseif( array_key_exists( 'taxonomy', $data ) ){
             $type = $data['taxonomy'];
@@ -207,9 +207,14 @@ class Rooftop_Response_Headers {
         }elseif( array_key_exists( 'term_id', $data ) ) {
             $type = $data['term_id'];
         }else {
-            // if all else failse, return the resource name
-            $path = preg_split( '/\//', $_SERVER['REQUEST_URI'] );
-            $type = end( $path );
+            // if all else fails, return the resource name
+            $path_parts = preg_split( '/\//', $_SERVER['REQUEST_URI'] );
+            if($this->is_resourceful($data)) {
+                $type = $path_parts[count($path_parts)-2];
+            }else {
+                $type = end($path_parts);
+            }
+            $type = preg_replace('/s$/', '', $type);
         }
 
         return $type;
