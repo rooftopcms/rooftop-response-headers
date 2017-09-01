@@ -2,10 +2,10 @@
 /*
 Plugin Name: Rooftop CMS - Response Headers
 Description: Add headers to the API reponse to aid in caching. Thanks to https://github.com/gnotaras/wordpress-add-headers
-Version: 0.0.1
-Author: Error Studio
-Author URI: http://errorstudio.co.uk
-Plugin URI: http://errorstudio.co.uk
+Version: 1.2.1
+Author: RooftopCMS
+Author URI: https://rooftopcms.com
+Plugin URI: https://github.com/rooftopcms/rooftop-response-headers
 Text Domain: rooftop-response-headers
 */
 
