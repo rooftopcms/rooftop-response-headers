@@ -2,7 +2,7 @@
 /*
 Plugin Name: Rooftop CMS - Response Headers
 Description: Add headers to the API reponse to aid in caching. Thanks to https://github.com/gnotaras/wordpress-add-headers
-Version: 1.2.1
+Version: 1.2.2
 Author: RooftopCMS
 Author URI: https://rooftopcms.com
 Plugin URI: https://github.com/rooftopcms/rooftop-response-headers
@@ -35,19 +35,24 @@ class Rooftop_Response_Headers {
             'cache_max_age_seconds' => 0
         );
 
-        add_action( 'save_post', function($post_id) {
+        add_filter( 'save_post', function($post_id) {
             $post = get_post($post_id);
 
             $id_key = $this->redis_key_prefix . $post->post_type . 's/' . $post_id;
             $slug_key = $this->redis_key_prefix . $post->post_type . 's/' . $post->post_name;
-            $this->redis->del($id_key);
-            $this->redis->del($slug_key);
+            $this->redis->del([$id_key]);
+            $this->redis->del([$slug_key]);
         }, 20, 1);
 
         add_action( 'init', function($query) use ($default_options) {
             $this->options = apply_filters( 'rooftop_response_header_options', $default_options );
 
-            $match_etag = array_key_exists('HTTP_IF_NONE_MATCH', $_SERVER) ? $_SERVER['HTTP_IF_NONE_MATCH'] : null;
+            $match_etag = array_key_exists('HTTP_IF_NONE_MATCH', $_SERVER) ? preg_replace('/("|\\\)/', '', $_SERVER['HTTP_IF_NONE_MATCH']) : null;
+
+            // if we have a weak etag, strip it down to a regular one so that it matches our key (unless we're generating weak etags in our config)
+            if(preg_match('/^W\//', $match_etag) && !$this->options['generate_weak_etag']) {
+                $match_etag = preg_replace('/(^W\/|"|\\\)/', '', $match_etag);
+            }
 
             // parse the query string into a $query_string_params array
             parse_str( @parse_url($_SERVER['REQUEST_URI'])['query'], $query_string_params );
@@ -75,7 +80,6 @@ class Rooftop_Response_Headers {
                  * has a matching etag, we can return an empty response and a 304 http status
                  */
                 if( $matched && $matched == $match_etag ) {
-                    echo "[]";
                     status_header(304);
 
                     if( $this->options['generate_weak_etag'] ) {
@@ -85,7 +89,7 @@ class Rooftop_Response_Headers {
                     }
 
                     header( 'ETag: ' . $etag );
-
+                    header( 'X-Powered-By: Rooftop CMS https://www.rooftopcms.com' );
                     exit;
                 }
             }

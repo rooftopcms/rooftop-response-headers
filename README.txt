@@ -36,6 +36,9 @@ Yes, it's a Wordpress plugin you're welcome to use outside the context of Roofto
 
 == Changelog ==
 
+= 1.2.2 =
+* Cleanup etags on init and return a 304 if the client has a cached document
+
 = 1.2.1 =
 * Tweak readme for packaging
 
