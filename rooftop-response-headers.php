@@ -32,7 +32,7 @@ class Rooftop_Response_Headers {
             'add_last_modified_header' => true,
             'add_cache_control_header' => true,
             'generate_weak_etag' => false,
-            'cache_max_age_seconds' => 0
+            'cache_max_age_seconds' => 300
         );
 
         add_filter( 'save_post', function($post_id) {
@@ -372,7 +372,7 @@ class Rooftop_Response_Headers {
      * @return String
      */
     function generate_cache_control( ) {
-        $default_cache_control_template = 'public, max-age=%s';
+        $default_cache_control_template = 'public, must-revalidate, max-age=%s';
         $cache_control_template = apply_filters( 'rooftop_cache_control_header_format', $default_cache_control_template );
         $header_cache_control_value = sprintf( $cache_control_template, $this->options['cache_max_age_seconds'] );
         return $header_cache_control_value;
